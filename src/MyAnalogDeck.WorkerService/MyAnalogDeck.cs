@@ -1,5 +1,4 @@
-﻿using InputSimulatorStandard;
-using System.IO.Ports;
+﻿using System.IO.Ports;
 
 namespace MyAnalogDeck.WorkerService;
 public class MyAnalogDeckWorker : BackgroundService
@@ -97,7 +96,6 @@ public class MyAnalogDeckWorker : BackgroundService
     private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
     {
         SerialPort sp = (SerialPort)sender;
-        var simulator = new InputSimulator();
 
         if (sp.IsOpen)
         {
