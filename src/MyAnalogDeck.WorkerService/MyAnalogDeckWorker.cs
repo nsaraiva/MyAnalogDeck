@@ -1,4 +1,6 @@
-﻿using System.IO.Ports;
+﻿using InputSimulatorStandard;
+using InputSimulatorStandard.Native;
+using System.IO.Ports;
 
 namespace MyAnalogDeck.WorkerService;
 public class MyAnalogDeckWorker : BackgroundService
@@ -96,6 +98,7 @@ public class MyAnalogDeckWorker : BackgroundService
     private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
     {
         SerialPort sp = (SerialPort)sender;
+        var simulator = new InputSimulator();
 
         if (sp.IsOpen)
         {
@@ -113,6 +116,12 @@ public class MyAnalogDeckWorker : BackgroundService
                     ShowMyAnalogDeckStatus();
                     break;
                 case "":
+                    break;
+                case "button 1\r\n":
+                    simulator.Keyboard.ModifiedKeyStroke(VirtualKeyCode.CONTROL, VirtualKeyCode.F4);
+                    break;
+                case "button 2\r\n":
+                    simulator.Keyboard.KeyPress(VirtualKeyCode.SPACE);
                     break;
             }
         }
