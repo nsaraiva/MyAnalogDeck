@@ -6,14 +6,20 @@ namespace MyAnalogDeck.WorkerService;
 public class MyAnalogDeckWorker : BackgroundService
 {
     private readonly ILogger<MyAnalogDeckWorker> _logger;
-
+    private readonly Dictionary<string, string> _buttonsSettings;
     private string MyAnalogDeckPortName;
     private string portNameChecked;
     private bool portNameFound = false;
 
-    public MyAnalogDeckWorker(ILogger<MyAnalogDeckWorker> logger)
+
+    public MyAnalogDeckWorker(ILogger<MyAnalogDeckWorker> logger, IConfiguration _configuration)
     {
         _logger = logger;
+
+        _buttonsSettings = _configuration.GetSection("MyAnalogDeck").GetSection("ButtonsSettings")
+            .GetChildren()
+            .ToDictionary(x => x.Key, x => x.Value);
+
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -102,27 +108,24 @@ public class MyAnalogDeckWorker : BackgroundService
 
         if (sp.IsOpen)
         {
-            string dataReceived = sp.ReadExisting();
+            string dataReceived = sp.ReadExisting().Replace("\r\n", "");
 
-            if (dataReceived != "MyAnalogDeck\r\n" && dataReceived != "")
+            if (dataReceived != "MyAnalogDeck" && dataReceived != "")
             {
                 _logger.LogInformation("{0} - {1}", DateTime.Now, dataReceived);
             }
 
-            switch (dataReceived)
+            if (_buttonsSettings.ContainsKey(dataReceived))
             {
-                case "MyAnalogDeck\r\n":    // Who are you response
-                    portNameFound = true;
-                    ShowMyAnalogDeckStatus();
-                    break;
-                case "":
-                    break;
-                case "button 1\r\n":
-                    simulator.Keyboard.ModifiedKeyStroke(VirtualKeyCode.CONTROL, VirtualKeyCode.F4);
-                    break;
-                case "button 2\r\n":
-                    simulator.Keyboard.KeyPress(VirtualKeyCode.SPACE);
-                    break;
+                if(_buttonsSettings[dataReceived].Split("+").Length > 1)
+                {
+                    simulator.Keyboard.ModifiedKeyStroke((VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode),_buttonsSettings[dataReceived].Split("+")[0]),
+                       (VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), _buttonsSettings[dataReceived].Split("+")[1]));
+                }
+                else
+                {
+                    simulator.Keyboard.KeyPress((VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), _buttonsSettings[dataReceived]));
+                }
             }
         }
     }
