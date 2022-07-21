@@ -115,6 +115,12 @@ public class MyAnalogDeckWorker : BackgroundService
                 _logger.LogInformation("{0} - {1}", DateTime.Now, dataReceived);
             }
 
+            if (dataReceived == "MyAnalogDeck")
+            {     // Who are you response
+                portNameFound = true;
+                ShowMyAnalogDeckStatus();
+            }
+
             if (_buttonsSettings.ContainsKey(dataReceived))
             {
                 if(_buttonsSettings[dataReceived].Split("+").Length > 1)
