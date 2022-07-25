@@ -1,6 +1,7 @@
 ﻿using InputSimulatorStandard;
 using InputSimulatorStandard.Native;
 using System.IO.Ports;
+using System.Diagnostics;
 
 namespace MyAnalogDeck.WorkerService;
 public class MyAnalogDeckWorker : BackgroundService
@@ -101,10 +102,60 @@ public class MyAnalogDeckWorker : BackgroundService
         }
     }
 
+    private void ExecuteMyAnalogDeckButton(string dataReceived)
+    {
+        var simulator = new InputSimulator();
+
+        if (_buttonsSettings.ContainsKey(dataReceived))
+        {
+            // Trying to get the user to type the correct syntax 
+            string buttonPressed = _buttonsSettings[dataReceived];
+            int firstParenthesesIndex = buttonPressed.IndexOf("(");
+            int secondParenthesesIndex = buttonPressed.IndexOf(")");
+
+            if (buttonPressed == null || firstParenthesesIndex == -1 || secondParenthesesIndex == -1)
+            {
+                _logger.LogWarning("Command not working. Verify the config file. Maybe the sintaxe is incorrect.");
+            }
+            else
+            {
+                string command = buttonPressed.Substring(0, firstParenthesesIndex + 1)
+                + buttonPressed.Substring(secondParenthesesIndex, buttonPressed.Length - secondParenthesesIndex);
+
+                string value = buttonPressed.Substring(firstParenthesesIndex + 1,
+                    (secondParenthesesIndex - firstParenthesesIndex - 1));
+
+                if (command == "keys()")
+                {
+                    if (value.Split("+").Length == 2)
+                    {
+                        simulator.Keyboard.ModifiedKeyStroke((VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), value.Split("+")[0]),
+                            (VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), value.Split("+")[1]));
+                    }
+                    else if(value.Split("+").Length == 3)
+                    {
+                        simulator.Keyboard.ModifiedKeyStroke(new[] { (VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), value.Split("+")[0]), (VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), value.Split("+")[1]) }, (VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), value.Split("+")[2]));
+                    }
+                    else
+                    {
+                        simulator.Keyboard.KeyPress((VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), value));
+                    }
+                }
+                else if (command == "exec()")
+                {
+                    Process ExternalProcess = new Process();
+                    ExternalProcess.StartInfo.FileName = value;
+                    ExternalProcess.StartInfo.WindowStyle = ProcessWindowStyle.Maximized;
+                    ExternalProcess.Start();
+                    ExternalProcess.WaitForExit();
+                }
+            }
+        }
+    }
+
     private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
     {
         SerialPort sp = (SerialPort)sender;
-        var simulator = new InputSimulator();
 
         if (sp.IsOpen)
         {
@@ -121,18 +172,8 @@ public class MyAnalogDeckWorker : BackgroundService
                 ShowMyAnalogDeckStatus();
             }
 
-            if (_buttonsSettings.ContainsKey(dataReceived))
-            {
-                if(_buttonsSettings[dataReceived].Split("+").Length > 1)
-                {
-                    simulator.Keyboard.ModifiedKeyStroke((VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode),_buttonsSettings[dataReceived].Split("+")[0]),
-                       (VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), _buttonsSettings[dataReceived].Split("+")[1]));
-                }
-                else
-                {
-                    simulator.Keyboard.KeyPress((VirtualKeyCode)Enum.Parse(typeof(VirtualKeyCode), _buttonsSettings[dataReceived]));
-                }
-            }
+            ExecuteMyAnalogDeckButton(dataReceived);
         }
     }
+
 }
